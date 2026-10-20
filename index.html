@@ -675,7 +675,7 @@ footer p{
           <img src="photos/top.jpg" alt="Swathy and Nivin">
         </div>
         <div class="rule"></div>
-        <p class="eyebrow">Together in love and grace</p>
+        <p class="eyebrow">together with their families</p>
         <h1 class="bride" id="brideName">Swathy</h1>
         <p class="family-line"><span>Mr. &amp; Mrs. Unnikrishnan</span></p>
 
@@ -749,7 +749,7 @@ footer p{
           </div>
           <div class="tl-body">
             <div class="tl-label">Ceremony &amp; Muhurtham</div>
-            <div class="tl-time" id="tlCeremony">10:00 AM</div>
+            <div class="tl-time" id="tlCeremony">Between 9:00 and 10:00 am</div>
             <div class="tl-desc">Solemnization of marriage &amp; blessings</div>
           </div>
         </div>
@@ -760,7 +760,7 @@ footer p{
           </div>
           <div class="tl-body">
             <div class="tl-label">Reception &amp; Feast</div>
-            <div class="tl-time" id="tlReception">12:30 PM Onwards</div>
+            <div class="tl-time" id="tlReception">11:00 am Onwards</div>
             <div class="tl-desc">Join us for a festive Sadhya</div>
           </div>
         </div>
@@ -824,7 +824,7 @@ footer p{
           Send RSVP via WhatsApp
         </button>
         <p class="form-msg" id="formMsg"></p>
-        <p class="rsvp-note" id="rsvpNote">Pre-fills message to +91 98765 43210</p>
+        <p class="rsvp-note" id="rsvpNote">Pre-fills message to +91 9745706282</p>
       </form>
     </section>
 
@@ -853,8 +853,8 @@ const CONFIG = {
   heroTimeLabel: "10:00 AM",
 
   fullDateLabel: "Sunday, 6 December 2026",
-  ceremonyTimeLabel: "10:00 AM",
-  receptionTimeLabel: "12:30 PM Onwards",
+  ceremonyTimeLabel: "Between 9:00 and 10:00 am",
+  receptionTimeLabel: "11:00 am Onwards",
 
   venueName: "Zahara Convention Centre",
   venueAddress: "Eranthode, Valambur, Malappuram, 679325",
@@ -878,7 +878,7 @@ document.getElementById('venueAddr').textContent = CONFIG.venueAddress;
 document.getElementById('rsvpNames').innerHTML =
   CONFIG.brideName.toUpperCase() + ' &amp; ' + CONFIG.groomName.toUpperCase();
 document.getElementById('rsvpNote').textContent =
-  'Pre-fills message to +' + CONFIG.whatsappNumber.replace(/(\d{2})(\d{5})(\d+)/, '$1 $2 $3');
+  'Pre-fills message to +' + CONFIG.whatsappNumber.replace(/^(\d{2})(\d+)$/, '$1 $2');
 document.getElementById('directionsBtn').href =
   'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(CONFIG.venueName + ', ' + CONFIG.venueAddress);
 document.querySelector('.intro-names').innerHTML =
@@ -930,11 +930,12 @@ document.querySelector('.intro-names').innerHTML =
   overlay.addEventListener('click', openIntro);
 })();
 
-// ---- background music: try to autoplay the instant the page opens;
-//      the button always lets the guest stop or restart it themselves ----
+// ---- background music: starts when the guest taps "Tap to Open"
+//      (works on mobile + desktop); button lets them stop/restart ----
 (function bgMusic(){
   const audio = document.getElementById('bgMusic');
   const btn = document.getElementById('musicBtn');
+  const overlay = document.getElementById('introOverlay');
   if (!audio || !btn) return;
 
   let userPaused = false; // true only when the guest explicitly hits pause
@@ -944,43 +945,45 @@ document.querySelector('.intro-names').innerHTML =
     btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
   }
 
+  audio.addEventListener('play',  () => setPlayingUI(true));
+  audio.addEventListener('pause', () => setPlayingUI(false));
+
+  // must be called synchronously inside a click/touchend handler so
+  // iOS Safari, Android Chrome and desktop browsers all allow playback
   function tryPlay(){
     if (userPaused) return;
+    audio.muted = false;
     const p = audio.play();
     if (p && p.then) {
-      p.then(() => setPlayingUI(true)).catch(() => setPlayingUI(false));
+      p.then(removeRetry).catch(() => { /* blocked: retry on next gesture */ });
     }
   }
 
-  // 1) attempt autoplay immediately, and again once the page has fully loaded
-  tryPlay();
-  if (document.readyState === 'complete') tryPlay();
-  else window.addEventListener('load', tryPlay);
-
-  // 2) most mobile browsers block autoplay-with-sound until the guest has
-  //    interacted with the page at all — as soon as they do (even just
-  //    tapping to open the invite), start the music automatically
-  function firstGesture(){
-    tryPlay();
-    document.removeEventListener('click', firstGesture);
-    document.removeEventListener('touchstart', firstGesture);
-    document.removeEventListener('keydown', firstGesture);
-    document.removeEventListener('scroll', firstGesture);
+  // backup: if the first attempt is blocked, retry on every real gesture
+  // until playback actually succeeds (touchstart/scroll are NOT valid
+  // activation gestures, so only click / touchend / keydown are used)
+  const retryEvents = ['click', 'touchend', 'keydown'];
+  function retry(){ tryPlay(); }
+  function removeRetry(){
+    retryEvents.forEach(ev => document.removeEventListener(ev, retry, true));
   }
-  document.addEventListener('click', firstGesture, { once: true });
-  document.addEventListener('touchstart', firstGesture, { once: true, passive: true });
-  document.addEventListener('keydown', firstGesture, { once: true });
-  document.addEventListener('scroll', firstGesture, { once: true, passive: true });
+  retryEvents.forEach(ev => document.addEventListener(ev, retry, true));
 
-  // 3) the button is the guest's manual override — stop or restart at will
-  btn.addEventListener('click', () => {
+  // main trigger: tapping the card plays the song immediately
+  if (overlay) {
+    overlay.addEventListener('click', tryPlay);
+    overlay.addEventListener('touchend', tryPlay);
+  }
+
+  // manual override button
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (audio.paused) {
       userPaused = false;
       tryPlay();
     } else {
       userPaused = true;
       audio.pause();
-      setPlayingUI(false);
     }
   });
 })();
@@ -1003,7 +1006,7 @@ document.querySelector('.intro-names').innerHTML =
   els.forEach(el => io.observe(el));
 })();
 
-// ---- memories carousel: auto-rotating single-frame slideshow ----
+// ---- memories carousel: auto-rotating, loops forever ----
 (function memoryCarousel(){
   const root = document.getElementById('memoryCarousel');
   if (!root) return;
@@ -1011,16 +1014,17 @@ document.querySelector('.intro-names').innerHTML =
   const dotsWrap = document.getElementById('carouselDots');
   if (slides.length <= 1) return;
 
-  slides.forEach((_, i) => {
-    const dot = document.createElement('span');
-    dot.className = 'dot' + (i === 0 ? ' active' : '');
-    dot.addEventListener('click', () => goTo(i));
-    dotsWrap.appendChild(dot);
-  });
-  const dots = Array.from(dotsWrap.querySelectorAll('.dot'));
-
+  const INTERVAL = 3500;
   let current = 0;
   let timer = null;
+
+  const dots = slides.map((_, i) => {
+    const dot = document.createElement('span');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => { goTo(i); start(); });
+    dotsWrap.appendChild(dot);
+    return dot;
+  });
 
   function goTo(index){
     slides[current].classList.remove('active');
@@ -1030,24 +1034,18 @@ document.querySelector('.intro-names').innerHTML =
     dots[current].classList.add('active');
   }
 
-  function next(){ goTo(current + 1); }
-
   function start(){
-    stop();
-    timer = setInterval(next, 3500);
-  }
-  function stop(){
     if (timer) clearInterval(timer);
-    timer = null;
+    timer = setInterval(() => goTo(current + 1), INTERVAL);
   }
 
-  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!prefersReduced) start();
+  // always running: no pause on hover/touch, so it can never get stuck
+  start();
 
-  // pause on hover/touch so viewers can linger on a photo, resume after
-  root.addEventListener('mouseenter', stop);
-  root.addEventListener('mouseleave', () => { if (!prefersReduced) start(); });
-  root.addEventListener('touchstart', stop, { passive: true });
+  // keep going after the tab/app returns to the foreground
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) start();
+  });
 })();
 
 // ---- RSVP form ----
